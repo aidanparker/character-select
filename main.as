@@ -6,8 +6,13 @@ var characterGrid:Array = new Array(); /// represents the character select scree
 /// Make sure ’characterRows’ × ’characterColumns’ is equal to the length of ’characterList’
 var characterRows:uint = 4; /// number of rows
 var characterColumns:uint = 8; /// number of columns
-var gridSpacingX:uint = 20;
-var gridSpacingY:uint = 20;
+var gridSpacingX:int = 0;
+var gridSpacingY:int = 0;
+var gridOffsetX:int = 80;
+var gridOffsetY:int = 400;
+var gridSkewX:int = 0; /// grid skew X amount
+var gridSkewY:int = -40; //-40; /// grid skew Y amount
+var gridCellSize:Number = 0.8; /// scale of grid cells
 
 //  Control Settings
 /// Change the control keys here
@@ -18,6 +23,7 @@ var leftKey = Keyboard.LEFT;
 var rightKey = Keyboard.RIGHT;
 var upKey = Keyboard.UP;
 var downKey = Keyboard.DOWN;
+var nudgeAmount:int = 1;
 
 //  Selection variables
 /// used to manage graphic selection
@@ -80,7 +86,13 @@ function setupCharacterGrid(rows:uint, columns:uint):void {
 
 		for(var j:uint = 0; j < columns; j++) {
 			if(characterList[characterCount]) {
-				characterGrid[i][j] = (characterList[characterCount]);
+				var rex:RegExp = /[\s\r\n]+/gim;
+				var id = characterList[characterCount];
+
+				id = id.replace(rex, ''); // remove any spaces from character names
+				id = id.replace('-', ''); // remove any hypens from chacter names
+
+				characterGrid[i][j] = (id);
 			}else {
 				characterGrid[i][j] = ('empty');
 			}
@@ -93,16 +105,20 @@ function setupCharacterGrid(rows:uint, columns:uint):void {
 
 //  Main function to render character select screen into the SWF
 function createSelectionScreen(spacingX:uint, spacingY:uint, split:Boolean):void {
-	var columnSpacing = spacingX;
-	var rowSpacing = spacingY;
-	var currentX = 0;
-	var currentY = 0;
+	var startingX:int;
+	var starting
+	var columnSpacing:int = spacingX;
+	var rowSpacing:int = spacingY;
+	var currentX:int = 0;
+	var currentY:int = 0;
 	var horizontalSplit;
+	var staggerAmountX:int = gridSkewX;
+	var staggerAmountY:int = gridSkewY;
 
-	currentX = rowSpacing;
-	currentY = columnSpacing;
+	currentX = rowSpacing + gridOffsetX;
+	currentY = columnSpacing + gridOffsetY;
 
-	trace(currentX + ', ' + currentY);
+	trace('Current X :: ' + currentX + ', ' + 'Current Y :: ' + currentY);
 
 	for(var i:uint = 0; i < characterGrid.length; i++) {
 		var tempHeight;
@@ -112,15 +128,30 @@ function createSelectionScreen(spacingX:uint, spacingY:uint, split:Boolean):void
 			trace('horizontalSplit: ' + horizontalSplit);
 		}
 
+		staggerAmountX = gridSkewX + staggerAmountX;
+		staggerAmountY = gridSkewY;
+
 		for(var j:uint = 0; j < characterGrid[i].length; j++) {
 			var characterIcon = new CharacterIcon();
 			var characterName:TextField = new TextField();
+			var characterSymbolName:String = characterGrid[i][j];
+			var rex:RegExp = /[\s\r\n]+/gim;
+			var characterArtwork:Class;
+			var characterArtworkSymbol:MovieClip;
 
-			characterName.text = characterGrid[i][j];
+			characterSymbolName = characterSymbolName.replace(rex, ''); // remove any spaces from character names
+			characterSymbolName = characterSymbolName.replace('-', ''); // remove any hypens from chacter names
+
+			characterArtwork = getDefinitionByName(characterSymbolName) as Class;
+			characterArtworkSymbol = new characterArtwork as MovieClip;
+			//characterName.text = characterSymbolName;
 
 			addChild(characterIcon);
-			characterIcon.name = characterGrid[i][j];
+			characterIcon.name = characterSymbolName;
 			characterIcon.addChild(characterName);
+			characterIcon.addChild(characterArtworkSymbol);
+			characterIcon.width = characterIcon.width * gridCellSize;
+			characterIcon.height = characterIcon.height * gridCellSize;
 
 			if(split) {
 				if(j == horizontalSplit) {
@@ -129,8 +160,10 @@ function createSelectionScreen(spacingX:uint, spacingY:uint, split:Boolean):void
 				}
 			}
 
-			characterIcon.x = currentX;
-			characterIcon.y = currentY;
+			staggerAmountY += gridSkewY;
+
+			characterIcon.x = currentX + staggerAmountX;
+			characterIcon.y = currentY + staggerAmountY;
 
 			if(split) {
 				if(j >= horizontalSplit) {
@@ -147,7 +180,7 @@ function createSelectionScreen(spacingX:uint, spacingY:uint, split:Boolean):void
 			tempHeight = characterIcon.height;
 		}
 
-		currentX = 0 + columnSpacing;
+		currentX = gridOffsetX + columnSpacing;
 		currentY += tempHeight + rowSpacing;
 	}
 }
@@ -206,8 +239,17 @@ function keyUps(event:KeyboardEvent):void {
 	}
 }
 
+function clearStage():void {
+	while (numChildren > 0) {
+		removeChildAt(0);
+	}
+}
+
 function moveLeft():void {
 	selectedColumn--;
+	/*gridSkewX -= nudgeAmount;
+	clearStage();
+	createSelectionScreen(gridSpacingX, gridSpacingY, false);*/
 
 	if(selectedColumn < 0) {
 		selectedColumn = (characterColumns - 1);
@@ -216,6 +258,9 @@ function moveLeft():void {
 
 function moveRight():void {
 	selectedColumn++;
+	/*gridSkewX += nudgeAmount;
+	clearStage();
+	createSelectionScreen(gridSpacingX, gridSpacingY, false);*/
 
 	if(selectedColumn > (characterColumns - 1)) {
 		selectedColumn = 0;
@@ -224,6 +269,9 @@ function moveRight():void {
 
 function moveUp():void {
 	selectedRow--;
+	/*gridSkewY -= nudgeAmount;
+	clearStage();
+	createSelectionScreen(gridSpacingX, gridSpacingY, false);*/
 
 	if(selectedRow < 0) {
 		selectedRow = (characterRows - 1);
@@ -232,6 +280,9 @@ function moveUp():void {
 
 function moveDown():void {
 	selectedRow++;
+	/*gridSkewY += nudgeAmount;
+	clearStage();
+	createSelectionScreen(gridSpacingX, gridSpacingY, false);*/
 
 	if(selectedRow > (characterRows - 1)) {
 		selectedRow = 0;
@@ -251,6 +302,7 @@ function updateSelection():void {
 	trace('currentSelection: ' + currentSelection);
 	trace('currentTarget: ' + currentTarget.name);
 	trace('—————\n');
+	trace(gridSkewX + ', ' + gridSkewY);
 
 	currentTarget.gotoAndStop(2);
 	prevTarget = currentTarget;
